@@ -18,14 +18,28 @@ public class ConexionSQL2 extends JFrame {
         pnActivo.setEnabled(ha);
         rbSi.setEnabled(ha);
         rbNo.setEnabled(ha);
-        btnGuardar.setEnabled(!ha);
+        btnGuardar.setEnabled(ha);
         btnBorrar.setEnabled(!ha);
         btnCambiarContra.setEnabled(!ha);
     }
     
+    public void limpiar(){
+        txtNombre.setText("");
+        txtApellido.setText("");
+        txtUsuario.setText("");
+        txtPass.setText("");
+        txtConfirPass.setText("");
+        rbSi.setSelected(false);
+        rbNo.setSelected(false);
+    }
+    
+    public void convertirMayuscula(JTextField txt){
+        txt.setText(txt.getText().trim().toUpperCase());
+    }
+    
     // INSERTAR
     public void insertar() {
-        String sql = "INSERT INTO usuarios (nombre, apellido, usuario, pass, confirpass, estatus) VALUES (?,?,?,?,?,?)";
+        String sql = "INSERT INTO usuarios (nombre, apellido, usuario, pass, confirpass, estatus,borrado,borrado_fecha) VALUES (?,?,?,?,?,?,?,?)";
         try (Connection con = Conexion.conectar();
             PreparedStatement ps = con.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, "");
@@ -34,6 +48,8 @@ public class ConexionSQL2 extends JFrame {
             ps.setString(4, "");
             ps.setString(5, "");
             ps.setString(6, "A");
+            ps.setString(7, "");
+            ps.setDate(8, java.sql.Date.valueOf("1900-01-01"));
             int filas = ps.executeUpdate();
             if (filas > 0) {
                 // Recuperar el ID generado
@@ -43,9 +59,7 @@ public class ConexionSQL2 extends JFrame {
                         txtId.setText(String.valueOf(idGenerado)); // Lo ponemos en el textbox
                     }
                 }
-                JOptionPane.showMessageDialog(null, "Registro almacenado exitosamente!");
             }
-
         } catch (SQLException e) {
             JOptionPane.showMessageDialog(null, e.getMessage());
         }
@@ -53,7 +67,7 @@ public class ConexionSQL2 extends JFrame {
     
      // CONSULTAR
     public void buscar(int id, JTextField txtNombre,JTextField txtApellido,JTextField txtUsuario, JPasswordField txtPass, JPasswordField txtConfirPass, JRadioButton rbSi,JRadioButton rbNo) {
-        String sql = "SELECT * FROM usuarios WHERE id=?";
+        String sql = "SELECT * FROM usuarios WHERE borrado!='*' and id=?";
         try (Connection con = Conexion.conectar();
             PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setInt(1, id);
@@ -79,19 +93,16 @@ public class ConexionSQL2 extends JFrame {
     }
     
      // ACTUALIZAR
-    public void actualizar(int id, String nombre, String apellido, String usuario, String pass,String confirpass, String status) {
-        String sql = "UPDATE usuarios SET nombre=?, apellido=?, usuario=?, pass=?, confirpass=?, estatus=? WHERE id=?";
+    public void actualizar(int id, String nombre, String apellido, String usuario, String status) {
+        String sql = "UPDATE usuarios SET nombre=?, apellido=?, usuario=?, estatus=? WHERE id=?";
         try (Connection con = Conexion.conectar();
              PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setString(1, nombre);
             ps.setString(2, apellido);
             ps.setString(3, usuario);
-            ps.setString(4, pass);
-            ps.setString(5, confirpass);
-            ps.setString(6, status);
-            ps.setInt(7, id);
+            ps.setString(4, status);
+            ps.setInt(5, id);
             ps.executeUpdate();
-            JOptionPane.showMessageDialog(null, "Registro actualizado con exito.");
         } catch (SQLException e) {
             JOptionPane.showMessageDialog(null, e.getMessage());
         }
@@ -99,10 +110,11 @@ public class ConexionSQL2 extends JFrame {
     
     // ELIMINAR
     public void eliminar(int id) {
-        String sql = "DELETE FROM usuarios WHERE id=?";
+        String sql = "UPDATE usuarios SET borrado=?, borrado_fecha=GETDATE() WHERE id=?";
         try (Connection con = Conexion.conectar();
-             PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setInt(1, id);
+            PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1,"*");
+            ps.setInt(2, id);
             ps.executeUpdate();
             JOptionPane.showMessageDialog(null, "Registro eliminado exitosamente.");
         } catch (SQLException e) {
@@ -158,6 +170,11 @@ public class ConexionSQL2 extends JFrame {
         jPanel1.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
 
         txtNombre.setEnabled(false);
+        txtNombre.addFocusListener(new java.awt.event.FocusAdapter() {
+            public void focusLost(java.awt.event.FocusEvent evt) {
+                txtNombreFocusLost(evt);
+            }
+        });
         txtNombre.addActionListener(this::txtNombreActionPerformed);
 
         jLabel1.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
@@ -169,9 +186,19 @@ public class ConexionSQL2 extends JFrame {
         jLabel2.setText("Apellido:");
 
         txtApellido.setEnabled(false);
+        txtApellido.addFocusListener(new java.awt.event.FocusAdapter() {
+            public void focusLost(java.awt.event.FocusEvent evt) {
+                txtApellidoFocusLost(evt);
+            }
+        });
         txtApellido.addActionListener(this::txtApellidoActionPerformed);
 
         txtUsuario.setEnabled(false);
+        txtUsuario.addFocusListener(new java.awt.event.FocusAdapter() {
+            public void focusLost(java.awt.event.FocusEvent evt) {
+                txtUsuarioFocusLost(evt);
+            }
+        });
         txtUsuario.addActionListener(this::txtUsuarioActionPerformed);
 
         jLabel6.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
@@ -255,6 +282,14 @@ public class ConexionSQL2 extends JFrame {
         jLabel7.setForeground(new java.awt.Color(116, 139, 167));
         jLabel7.setText("Id:");
 
+        txtId.addFocusListener(new java.awt.event.FocusAdapter() {
+            public void focusGained(java.awt.event.FocusEvent evt) {
+                txtIdFocusGained(evt);
+            }
+            public void focusLost(java.awt.event.FocusEvent evt) {
+                txtIdFocusLost(evt);
+            }
+        });
         txtId.addActionListener(this::txtIdActionPerformed);
         txtId.addKeyListener(new java.awt.event.KeyAdapter() {
             public void keyReleased(java.awt.event.KeyEvent evt) {
@@ -370,20 +405,18 @@ public class ConexionSQL2 extends JFrame {
     private void btnGuardarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnGuardarActionPerformed
         // TODO add your handling code here:
         int id;
-        String nombre,apellido,usuario,pass,confirpass,status;
+        String nombre,apellido,usuario,status;
         if (!txtId.getText().trim().isEmpty()) {
             id = Integer.parseInt(txtId.getText());
             nombre=txtNombre.getText();
             apellido=txtApellido.getText();
             usuario=txtUsuario.getText();
-            pass = new String(txtPass.getPassword());
-            confirpass = new String(txtConfirPass.getPassword());
             if (rbSi.isSelected()){
                 status = "A";
             }else{
                 status = "I";
             }
-            actualizar(id,nombre,apellido,usuario,pass,confirpass,status);
+            actualizar(id,nombre,apellido,usuario,status);
             habilitar(false);
         } else {
             JOptionPane.showMessageDialog(null, "El ID está vacío");
@@ -395,6 +428,7 @@ public class ConexionSQL2 extends JFrame {
         if (!txtId.getText().trim().isEmpty()) {
           int id = Integer.parseInt(txtId.getText());
           eliminar(id);
+          limpiar();
         } else {
             JOptionPane.showMessageDialog(null, "El ID está vacío");
         }
@@ -421,7 +455,22 @@ public class ConexionSQL2 extends JFrame {
             txtConfirPass.setEnabled(true);
             addedit=2;
         }else{
-            
+            String sql = "UPDATE usuarios SET pass=?, confirpass=? WHERE id=?";
+            String pass, confirpass;     
+            pass = new String(txtPass.getPassword());
+            confirpass = new String(txtConfirPass.getPassword());
+            int id = Integer.parseInt(txtId.getText());
+            try (Connection con = Conexion.conectar();
+                PreparedStatement ps = con.prepareStatement(sql)) {
+                ps.setString(1, pass);
+                ps.setString(2, confirpass);
+                ps.setInt(3, id);
+                ps.executeUpdate();
+                addedit=1;
+                habilitar(false);
+            } catch (SQLException e) {
+                JOptionPane.showMessageDialog(null, e.getMessage());
+            }
         }
     }//GEN-LAST:event_btnCambiarContraActionPerformed
 
@@ -436,24 +485,49 @@ public class ConexionSQL2 extends JFrame {
 
     private void btnNuevoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnNuevoActionPerformed
         // TODO add your handling code here:
-        if("".equals(txtId.getText())){
+        if (txtId.getText().trim().isEmpty()) {
             insertar();
             btnEditar.setEnabled(true);
         }else{
             int id = Integer.parseInt(txtId.getText());
             buscar(id,txtNombre,txtApellido,txtUsuario,txtPass,txtConfirPass,rbSi,rbNo);
             btnEditar.setEnabled(true);
+            btnBorrar.setEnabled(true);
         }
     }//GEN-LAST:event_btnNuevoActionPerformed
 
     private void txtIdKeyReleased(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_txtIdKeyReleased
         // TODO add your handling code here:
-        if (!"".equals(txtId.getText().trim())) {
+        if (txtId.getText().trim().isEmpty()) {
             btnNuevo.setText("Buscar");
         } else {
             btnNuevo.setText("Nuevo");
         }
     }//GEN-LAST:event_txtIdKeyReleased
+
+    private void txtIdFocusGained(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_txtIdFocusGained
+        // TODO add your handling code here:
+        limpiar();
+    }//GEN-LAST:event_txtIdFocusGained
+
+    private void txtNombreFocusLost(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_txtNombreFocusLost
+        // TODO add your handling code here:
+        convertirMayuscula(txtNombre);
+    }//GEN-LAST:event_txtNombreFocusLost
+
+    private void txtApellidoFocusLost(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_txtApellidoFocusLost
+        // TODO add your handling code here:
+        convertirMayuscula(txtApellido);
+    }//GEN-LAST:event_txtApellidoFocusLost
+
+    private void txtUsuarioFocusLost(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_txtUsuarioFocusLost
+        // TODO add your handling code here:
+        convertirMayuscula(txtUsuario);
+    }//GEN-LAST:event_txtUsuarioFocusLost
+
+    private void txtIdFocusLost(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_txtIdFocusLost
+        // TODO add your handling code here:
+    }//GEN-LAST:event_txtIdFocusLost
 
     /**
      * @param args the command line arguments
